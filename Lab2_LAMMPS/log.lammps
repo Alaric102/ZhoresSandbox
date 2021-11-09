@@ -1,0 +1,155 @@
+LAMMPS (4 Jan 2019)
+  using 4 OpenMP thread(s) per MPI task
+
+units         real
+
+atom_style      full
+pair_style      lj/charmm/coul/long 8.0 10.0
+bond_style      harmonic
+angle_style     charmm
+dihedral_style  charmm
+improper_style  harmonic
+kspace_style    ewald 0.001
+
+neighbor        7.0 bin
+
+region rfull block  -50 50 -50 50  -50 50
+region cation block  -45 0 -50 50  -50 50
+region anion block  5 50 -50 50   -50 50
+
+lattice fcc 12.
+Lattice spacing in x,y,z = 12 12 12
+
+create_box 2 rfull
+Created orthogonal box = (-50 -50 -50) to (50 50 50)
+  1 by 2 by 2 MPI processor grid
+
+pair_coeff   * *  0.28 3.
+
+create_atoms 1 region cation
+Created 1156 atoms
+  Time spent = 0.00208727 secs
+create_atoms 2 region anion
+Created 1156 atoms
+  Time spent = 9.42331e-05 secs
+
+set type 1 charge -1.
+  1156 settings made for charge
+set type 2 charge 1.
+  1156 settings made for charge
+
+mass 1 39.948
+mass 2 39.948
+
+# comm_style brick
+# comm_style tiled
+
+velocity all create 87.3 102486 mom yes rot no dist gaussian
+
+thermo_style    custom step density pe ke epair temp press
+thermo        1000
+
+fix  0 all nvt temp 87.3 87.3 8.
+dump 1 all xyz 50 charged.xyz
+dump_modify 1 element C O
+run 1000
+Ewald initialization ...
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:321)
+  G vector (1/distance) = 0.184791
+  estimated absolute RMS force accuracy = 0.450186
+  estimated relative force accuracy = 0.00135572
+  KSpace vectors: actual max1d max3d = 2787 11 6083
+                  kxmax kymax kzmax  = 11 11 11
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 17
+  ghost atom cutoff = 17
+  binsize = 8.5, bins = 12 12 12
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/charmm/coul/long, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 28.17 | 28.17 | 28.18 Mbytes
+Step Density PotEng KinEng E_pair Temp Press 
+       0     0.153367    2392807.6    601.37932    2392807.6         87.3    54728.462 
+    1000     0.153367    1076281.9    1631.5806    1076281.9    236.85049    27439.329 
+Loop time of 11.314 on 16 procs for 1000 steps with 2312 atoms
+
+Performance: 7.637 ns/day, 3.143 hours/ns, 88.386 timesteps/s
+99.5% CPU use with 4 MPI tasks x 4 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.13725    | 0.14467    | 0.15656    |   1.9 |  1.28
+Bond    | 0.00048137 | 0.00052711 | 0.00057301 |   0.0 |  0.00
+Kspace  | 9.9945     | 10.392     | 10.929     |  10.7 | 91.85
+Neigh   | 0.0013331  | 0.0013425  | 0.0013491  |   0.0 |  0.01
+Comm    | 0.16323    | 0.71108    | 1.1148     |  41.6 |  6.28
+Output  | 0.028194   | 0.034192   | 0.040512   |   2.4 |  0.30
+Modify  | 0.016575   | 0.017277   | 0.018078   |   0.5 |  0.15
+Other   |            | 0.01326    |            |       |  0.12
+
+Nlocal:    578 ave 582 max 576 min
+Histogram: 2 0 0 1 0 0 0 0 0 1
+Nghost:    1482 ave 1484 max 1478 min
+Histogram: 1 0 0 0 0 0 1 0 0 2
+Neighs:    14354.2 ave 14607 max 14197 min
+Histogram: 2 0 0 0 0 1 0 0 0 1
+
+Total # of neighbors = 57417
+Ave neighs/atom = 24.8343
+Ave special neighs/atom = 0
+Neighbor list builds = 2
+Dangerous builds = 0run 5000
+Ewald initialization ...
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:321)
+  G vector (1/distance) = 0.184791
+  estimated absolute RMS force accuracy = 0.450186
+  estimated relative force accuracy = 0.00135572
+  KSpace vectors: actual max1d max3d = 2787 11 6083
+                  kxmax kymax kzmax  = 11 11 11
+Per MPI rank memory allocation (min/avg/max) = 28.4 | 28.4 | 28.4 Mbytes
+Step Density PotEng KinEng E_pair Temp Press 
+    1000     0.153367    1076282.9    1631.4599    1076282.9    236.83297    27439.934 
+    2000     0.153367    441194.62    1520.2709    441194.62    220.69208    11075.097 
+    3000     0.153367    26541.211    984.76692    26541.211    142.95495    1937.4424 
+    4000     0.153367   -109976.68    696.03143   -109976.68    101.04029   -99.893165 
+    5000     0.153367   -155952.22      617.717   -155952.22     89.67168   -463.68755 
+    6000     0.153367   -171344.85    639.55991   -171344.85    92.842534   -442.28568 
+Loop time of 321.46 on 4 procs for 5000 steps with 2312 atoms
+
+Performance: 1.344 ns/day, 17.859 hours/ns, 15.554 timesteps/s
+62.3% CPU use with 1 MPI tasks x 4 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 5.6173     | 5.6173     | 5.6173     |   0.0 |  1.75
+Bond    | 0.0035949  | 0.0035949  | 0.0035949  |   0.0 |  0.00
+Kspace  | 314.25     | 314.25     | 314.25     |   0.0 | 97.76
+Neigh   | 0.050355   | 0.050355   | 0.050355   |   0.0 |  0.02
+Comm    | 0.26629    | 0.26629    | 0.26629    |   0.0 |  0.08
+Output  | 0.91384    | 0.91384    | 0.91384    |   0.0 |  0.28
+Modify  | 0.26284    | 0.26284    | 0.26284    |   0.0 |  0.08
+Other   |            | 0.09144    |            |       |  0.03
+
+Nlocal:    2312 ave 2312 max 2312 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    3697 ave 3697 max 3697 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    66357 ave 66357 max 66357 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 66357
+Ave neighs/atom = 28.7011
+Ave special neighs/atom = 0
+Neighbor list builds = 7
+Dangerous builds = 0
+
+Total wall time: 0:06:01
+ime: 0:04:03
+
