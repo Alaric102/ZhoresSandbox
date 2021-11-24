@@ -181,6 +181,67 @@ namespace advection
 	void advection_2d_mpi::solver_small(double *&u, double const &dt, double *&velocities, bool if_y, bool if_h, double t)
 	{
 		//pack u and velocities to `send_data` here
+		double **send_data = new double* [size_of_group];
+		double **received_data = new double* [size_of_group];
+		
+		for (int i = 0; i < size_of_group; ++i){
+			send_data[i] 	 = new double [3*interfaces_size[i]];
+			received_data[i] = new double [3*interfaces_size[i]];
+			if (i != rank){
+				// std::cout << rank << " with " << i << " number of shared triangles: " << interfaces_size[i] << std::endl;
+				for (int j = 0; j < interfaces_size[i]; ++j){
+					int id = ids_to_send[i][j];
+
+					send_data[i][3*j]   = u[id];
+					send_data[i][3*j+1] = velocities[id];
+					send_data[i][3*j+2] = velocities[id + 1];
+
+					// std::cout << j << " triangle ID: " << id << std::endl;
+					// std::cout << id << " triangle\n"
+					// 		  << u[id] << ", "
+					// 		  << velocities[id] << ", "
+					// 		  << velocities[id + 1] << ", " << std::endl;
+				}
+			} 
+		}
+		
+		std::cout << rank << " Finised packing" << std::endl;
+		MPI_Barrier(MPI_COMM_WORLD);
+		
+		MPI_Request request[size_of_group];
+		for (int i = 0; i < size_of_group; i++)
+		{
+			if (i!=rank){
+				std::cout << rank << " ---> " << i << ". " << interfaces_size[i] << std::endl;
+				MPI_Isend(send_data[i], interfaces_size[i], MPI_INT, i, rank, MPI_COMM_WORLD, &request[i]);
+			}
+		}
+		for (int i = 0; i < size_of_group; i++) {
+			if (i != rank) {
+				MPI_Recv(received_data[i], interfaces_size[i], MPI_INT, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			
+				for (int j = 0; j < size; j++)
+				{
+					for (int k = 0; k < interfaces_size[i]; k++)
+					{
+						if(global_ids_reference[j] == buffer[k]) received_ids[i][k] = j;
+					}	
+				}
+				for (int k = 0; k < interfaces_size[i]; k++)
+				{
+					for (int j = 0; j < size; j++)
+					{
+					
+						if(global_ids_reference[j] == ids_to_send[i][k]) ids_to_send[i][k] = j;
+					}	
+				}
+				delete [] buffer;
+			}
+		}
+		
+		MPI_Barrier(MPI_COMM_WORLD);
+		std::cout << rank << " finised" << std::endl;
+
 		//send_data[0] - 1d array to send to process 0
 		//send_data[1] - 1d array to send to process 1
 		//send_data[2] - 1d array to send to process 2
