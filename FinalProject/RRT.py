@@ -267,9 +267,9 @@ def main(gx=6.0, gy=10.0):
     path = rrt.planning(animation=show_animation)
 
     duration = time.time() - start_time
-    f = open("source time.dat", "a")
-    f.write(str(duration)+'\n')
-    f.close()
+    # f = open("source time.dat", "a")
+    # f.write(str(duration)+'\n')
+    # f.close()
 
     if path is None:
         print("Cannot find path")

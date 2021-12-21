@@ -78,9 +78,9 @@ class RRT:
         for i in range(self.max_iter):
             rnd_node = self.get_random_node()
 
-            proc.print("rnd_node:", rnd_node.x, rnd_node.y)
+            proc.print( "rnd_node: " + str(round(rnd_node.x, 1)) + ", " + str(round(rnd_node.y, 1)) )
 
-        #     nearest_ind = self.get_nearest_node_index(self.node_list, rnd_node)
+            nearest_ind = self.get_nearest_node_index(self.node_list, rnd_node)
         #     nearest_node = self.node_list[nearest_ind]
 
         #     new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
@@ -111,7 +111,9 @@ def main(gx=6.0, gy=10.0):
                     (9, 5, 2), (8, 10, 1)]  # [x, y, radius]
     
     # Set Initial parameters
-    rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], obstacle_list=obstacleList)
+    rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], max_iter=10,
+        obstacle_list=obstacleList)
+
     path = rrt.planning(animation=True)
 
     # duration = time.time() - start_time
