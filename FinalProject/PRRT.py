@@ -1,5 +1,5 @@
 # https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/RRT/rrt.py
-# mpirun --allow-run-as-root -n 4 python3 FinalProject/PPRRT.py 
+# mpirun --allow-run-as-root -n 4 python3 FinalProject/PRRT.py 
 
 # import all the needed modules
 from mpi4py import MPI
@@ -72,22 +72,97 @@ class RRT:
         else:  # goal point sampling
             rnd = self.Node(self.end.x, self.end.y)
         return rnd
+    
+    @staticmethod
+    def calc_distance_and_angle(from_node, to_node):
+        dx = to_node.x - from_node.x
+        dy = to_node.y - from_node.y
+        d = math.hypot(dx, dy)
+        theta = math.atan2(dy, dx)
+        return d, theta
+
+    def steer(self, from_node, to_node, extend_length=float("inf")):
+        new_node = self.Node(from_node.x, from_node.y)
+        d, theta = self.calc_distance_and_angle(new_node, to_node)
+
+        new_node.path_x = [new_node.x]
+        new_node.path_y = [new_node.y]
+
+        if extend_length > d:
+            extend_length = d
+
+        n_expand = math.floor(extend_length / self.path_resolution)
+        
+        for _ in range(n_expand):
+            new_node.x += self.path_resolution * math.cos(theta)
+            new_node.y += self.path_resolution * math.sin(theta)
+            new_node.path_x.append(new_node.x)
+            new_node.path_y.append(new_node.y)
+
+        d, _ = self.calc_distance_and_angle(new_node, to_node)
+        if d <= self.path_resolution:
+            new_node.path_x.append(to_node.x)
+            new_node.path_y.append(to_node.y)
+            new_node.x = to_node.x
+            new_node.y = to_node.y
+
+        new_node.parent = from_node
+        return new_node
+
+    @staticmethod
+    def get_nearest_node_index(node_list, rnd_node):
+        dlist = [(node.x - rnd_node.x)**2 + (node.y - rnd_node.y)**2 for node in node_list]
+        minind = dlist.index(min(dlist))
+        return minind
+
+    @staticmethod
+    def check_if_outside_play_area(node, play_area):
+        if play_area is None: return True  # no play_area was defined, every pos should be ok
+
+        if node.x < play_area.xmin or node.x > play_area.xmax or \
+           node.y < play_area.ymin or node.y > play_area.ymax:
+            return False  # outside - bad
+        else:
+            return True  # inside - ok
+
+    @staticmethod
+    def check_collision(node, obstacleList):
+        if node is None: return False
+
+        for (ox, oy, size) in obstacleList:
+            dx_list = [ox - x for x in node.path_x]
+            dy_list = [oy - y for y in node.path_y]
+            d_list = [dx * dx + dy * dy for (dx, dy) in zip(dx_list, dy_list)]
+
+            if min(d_list) <= size**2:
+                return False  # collision
+        return True  # safe
+
+    def SyncGraph(self, new_node):
+        data = comm.gather(new_node, root=0)
+        data = comm.bcast(data, root=0)
+        [self.node_list.append(item) for item in data]
+        
+        # if proc.rank_ == 0:
+        #     for item in self.node_list:
+        #             proc.Print("[" + str(round(item.x, 3)) + ", " + str(round(item.y, 3)) + "]")
+        #     proc.Print()
+        # comm.Barrier()
 
     def planning(self, animation=True):
         self.node_list = [self.start]
         for i in range(self.max_iter):
             rnd_node = self.get_random_node()
-
-            proc.print( "rnd_node: " + str(round(rnd_node.x, 1)) + ", " + str(round(rnd_node.y, 1)) )
-
             nearest_ind = self.get_nearest_node_index(self.node_list, rnd_node)
-        #     nearest_node = self.node_list[nearest_ind]
+            nearest_node = self.node_list[nearest_ind]
+            new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
+            
+            # proc.Print("msg2: [" + str(round(nearest_node.x, 1)) + ", " + str(round(nearest_node.y, 1)) + "] --> [" +
+            #     str(round(new_node.x, 3)) + ", " + str(round(new_node.y, 3)) + "]")
 
-        #     new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
-
-        #     if self.check_if_outside_play_area(new_node, self.play_area) and \
-        #        self.check_collision(new_node, self.obstacle_list):
-        #         self.node_list.append(new_node)
+            if self.check_if_outside_play_area(new_node, self.play_area) and self.check_collision(new_node, self.obstacle_list):
+                self.SyncGraph(new_node)
+                # self.node_list.append(new_node)
 
         #     if animation and i % 5 == 0:
         #         self.draw_graph(rnd_node)
@@ -111,7 +186,7 @@ def main(gx=6.0, gy=10.0):
                     (9, 5, 2), (8, 10, 1)]  # [x, y, radius]
     
     # Set Initial parameters
-    rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], max_iter=10,
+    rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], max_iter=2,
         obstacle_list=obstacleList)
 
     path = rrt.planning(animation=True)
