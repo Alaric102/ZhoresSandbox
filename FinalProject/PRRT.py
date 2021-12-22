@@ -34,19 +34,29 @@ class RRT:
             self.ymax = float(area[3])
     
     class Process:
-        def __init__(self, rank) -> None:
+        def __init__(self, rank, size) -> None:
             self.rank_ = rank
+            self.size_ = size
+            self.updates = []
 
         def Print(self, msg=""):
             print("CPU", self.rank_, ":",  msg, flush=True)
+
+        def PrintNode(self, node):
+            msg = "Not node"
+            if type(node) is RRT.Node:
+                msg = "[" + str(round(node.x, 3)) + ", " + str(round(node.y, 3)) + "]"
+            self.Print(msg)
+            # for i in range(self.size_):
+            #     if i == self.rank_ : continue
+            #     self.updates.update( {i : []} )
 
         def Report(self, msg):
             pass
 
     class Master(Process):
         def __init__(self, rank, size) -> None:
-            super().__init__(rank)
-            self.size_ = size
+            super().__init__(rank, size)
             self.Print("Launched " + str(self.size_) +  " processes.")
 
         def Report(self, msg):
@@ -81,10 +91,9 @@ class RRT:
         self.comm = MPI.COMM_WORLD
         size = self.comm.Get_size()
         rank = self.comm.Get_rank()
-        if rank == 0:
-            self.proc = self.Master(rank, size)
-        else:
-            self.proc = self.Process(rank)
+        
+        # if 
+        self.proc = self.Process(rank, size)
 
     def draw_graph(self, rnd=None):
         plt.clf()
@@ -237,37 +246,66 @@ class RRT:
                 self.node_list.append(item[0])
         return
 
+    def GetUpdates(self):
+        for i in range(self.proc.size_):
+            if i == self.proc.rank_: 
+                continue
+            self.proc.Print("Get from " + str(i))
+            status = MPI.Status()
+            req = self.comm.irecv(i, tag=self.proc.rank_)
+            # some = req.Test()
+            # self.proc.Print("Get Updates " + str(i) + " is " + str(some))
+            # if not some: continue
+            # updates = req.wait()
+
+            # self.proc.Print("get updates to " + str(i))
+            self.proc.Print(str(req.))
+
+    def SendUpdates(self):
+        for i in range(self.proc.size_):
+            if i == self.proc.rank_: 
+                continue
+            self.proc.Print("Send to " + str(i))
+            req = self.comm.isend(self.proc.updates, dest=i, tag=self.proc.rank_)
+            # some = req.Test()
+            # self.proc.Print("Send Updates " + str(i) + " is " + str(some))
+            # req.wait()
+
     def planning(self, animation=True):
         self.node_list = [self.start]
         for i in range(self.max_iter):
+            self.comm.Barrier()
+
+            self.GetUpdates()
+            self.SendUpdates()
+
             rnd_node = self.get_random_node()
-            nearest_ind = self.get_nearest_node_index(self.node_list, rnd_node)
-            nearest_node = self.node_list[nearest_ind]
-            new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
+            self.proc.updates.append(rnd_node)
+
             
-            if self.check_if_outside_play_area(new_node, self.play_area) and self.check_collision(new_node, self.obstacle_list):
-                self.node_list.append(new_node)
-            #     new_node = [new_node]
-            # else:
-            #     new_node = [None]
+            # nearest_ind = self.get_nearest_node_index(self.node_list, rnd_node)
 
-            # self.SyncGraph(new_node)
-
-            if animation and i % 5 == 0:
-                self.draw_graph(rnd_node)
+            # nearest_node = self.node_list[nearest_ind]
+            # new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
             
-            shift = self.proc.rank_ + 1
-            shift = 1
-            if self.calc_dist_to_goal(self.node_list[-shift].x,
-                                      self.node_list[-shift].y) <= self.expand_dis:
-                final_node = self.steer(self.node_list[-shift], self.end,
-                                        self.expand_dis)
-                if self.check_collision(final_node, self.obstacle_list):
-                    self.proc.Print("Found!")
-                    return self.generate_final_course(len(self.node_list) - 1)
+            # if self.check_if_outside_play_area(new_node, self.play_area) and self.check_collision(new_node, self.obstacle_list):
+            #     self.node_list.append(new_node)
 
-            if animation and i % 5:
-                self.draw_graph(rnd_node)
+            # if animation and i % 5 == 0:
+            #     self.draw_graph(rnd_node)
+            
+            # shift = self.proc.rank_ + 1
+            # shift = 1
+            # if self.calc_dist_to_goal(self.node_list[-shift].x,
+            #                           self.node_list[-shift].y) <= self.expand_dis:
+            #     final_node = self.steer(self.node_list[-shift], self.end,
+            #                             self.expand_dis)
+            #     if self.check_collision(final_node, self.obstacle_list):
+            #         self.proc.Print("Found!")
+            #         return self.generate_final_course(len(self.node_list) - 1)
+
+            # if animation and i % 5:
+            #     self.draw_graph(rnd_node)
 
         return None  # cannot find path
 
@@ -277,7 +315,7 @@ def main(gx=6.0, gy=10.0):
                     (9, 5, 2), (8, 10, 1)]  # [x, y, radius]
 
     # Set Initial parameters
-    rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], max_iter=10000,
+    rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], max_iter=2,
         obstacle_list=obstacleList)
 
     start_time = time.time()
