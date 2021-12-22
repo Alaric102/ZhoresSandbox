@@ -85,7 +85,6 @@ class RRT:
             self.proc = self.Master(rank, size)
         else:
             self.proc = self.Process(rank)
-        self.comm.Barrier()
 
     def draw_graph(self, rnd=None):
         plt.clf()
@@ -227,23 +226,15 @@ class RRT:
         #             msg += "[" + str( round(item[0].x, 5) ) + ", " + str( round(item[0].y, 5) ) + "];"
         # self.proc.Print(msg)
 
-        self.comm.Barrier()
-
         data_bcast = self.comm.bcast(data_gather, root=0)
-        self.comm.Barrier()
 
-        msg = ""
-        if type(data_bcast) == list:
-            msg = "data_bcast"
-            for item in data_bcast:
-                if type(item[0]) == self.Node:
-                    # msg += "[" + str( round(item[0].x, 5) ) + ", " + str( round(item[0].y, 5) ) + "];"
-                    self.node_list.append(item[0])
-        # self.proc.Print(msg)
-        
-        # self.proc.Print( str(len(self.node_list)) )
-
-        self.comm.Barrier()
+        # msg = ""
+        # if type(data_bcast) == list:
+            # msg = "data_bcast"
+        for item in data_bcast:
+            if type(item[0]) == self.Node:
+                # msg += "[" + str( round(item[0].x, 5) ) + ", " + str( round(item[0].y, 5) ) + "];"
+                self.node_list.append(item[0])
         return
 
     def planning(self, animation=True):
@@ -255,21 +246,24 @@ class RRT:
             new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
             
             if self.check_if_outside_play_area(new_node, self.play_area) and self.check_collision(new_node, self.obstacle_list):
-                new_node = [new_node]
-            else:
-                new_node = [None]
+                self.node_list.append(new_node)
+            #     new_node = [new_node]
+            # else:
+            #     new_node = [None]
 
-            self.SyncGraph(new_node)
-            # self.proc.Report("Iteration:" + str(i))
+            # self.SyncGraph(new_node)
 
             if animation and i % 5 == 0:
                 self.draw_graph(rnd_node)
-
-            if self.calc_dist_to_goal(self.node_list[-1].x,
-                                      self.node_list[-1].y) <= self.expand_dis:
-                final_node = self.steer(self.node_list[-1], self.end,
+            
+            shift = self.proc.rank_ + 1
+            shift = 1
+            if self.calc_dist_to_goal(self.node_list[-shift].x,
+                                      self.node_list[-shift].y) <= self.expand_dis:
+                final_node = self.steer(self.node_list[-shift], self.end,
                                         self.expand_dis)
                 if self.check_collision(final_node, self.obstacle_list):
+                    self.proc.Print("Found!")
                     return self.generate_final_course(len(self.node_list) - 1)
 
             if animation and i % 5:
@@ -278,7 +272,6 @@ class RRT:
         return None  # cannot find path
 
 def main(gx=6.0, gy=10.0):
-    start_time = time.time()
         # ====Search Path with RRT====
     obstacleList = [(5, 5, 1), (3, 6, 2), (3, 8, 2), (3, 10, 2), (7, 5, 2),
                     (9, 5, 2), (8, 10, 1)]  # [x, y, radius]
@@ -287,6 +280,7 @@ def main(gx=6.0, gy=10.0):
     rrt = RRT( start=[0, 0], goal=[gx, gy], rand_area=[-2, 15], max_iter=10000,
         obstacle_list=obstacleList)
 
+    start_time = time.time()
     path = rrt.planning(animation=show_animation)
 
     duration = time.time() - start_time
@@ -295,9 +289,9 @@ def main(gx=6.0, gy=10.0):
     f.close()
 
     if path is None:
-        rrt.proc.Report("Cannot find path")
+        rrt.proc.Print("Cannot find path")
     else:
-        rrt.proc.Report("found path!!")
+        rrt.proc.Print("found path!!:" + str(duration))
 
         # Draw final path
         if show_animation:
@@ -306,6 +300,7 @@ def main(gx=6.0, gy=10.0):
             plt.grid(True)
             plt.pause(0.5)  # Need for Mac
             # plt.show()
+        exit()
 
 if __name__ == '__main__':
     main()
