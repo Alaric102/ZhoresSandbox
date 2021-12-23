@@ -9,8 +9,6 @@ import math
 import random
 import time 
 import matplotlib.pyplot as plt
-import mkl
-mkl.set_num_threads(1)
 import numpy as np
 
 import sys
