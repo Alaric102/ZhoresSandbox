@@ -46,8 +46,8 @@ class RRT:
                  goal,
                  obstacle_list,
                  rand_area,
-                 expand_dis=0.05,
-                 path_resolution=0.01,
+                 expand_dis=0.5,
+                 path_resolution=0.1,
                  goal_sample_rate=5,
                  max_iter=10000,
                  play_area=None
@@ -267,14 +267,14 @@ def main(gx=6.0, gy=10.0):
     path = rrt.planning(animation=show_animation)
 
     duration = time.time() - start_time
-    # f = open("source time.dat", "a")
-    # f.write(str(duration)+'\n')
-    # f.close()
+    f = open("source time.dat", "a")
+    f.write(str(duration)+'\n')
+    f.close()
 
     if path is None:
         print("Cannot find path")
     else:
-        print("found path!!")
+        print("found path!!", duration)
 
         # Draw final path
         if show_animation:
