@@ -4,6 +4,7 @@
 # import all the needed modules
 from typing import Tuple
 from mpi4py import MPI
+import sys
 
 import math
 import random
@@ -362,7 +363,8 @@ def main(gx=6.0, gy=10.0):
             plt.grid(True)
             plt.pause(10)  # Need for Mac
             # plt.show()
-        exit()
+    sys.exit(1)
+
 
 if __name__ == '__main__':
     main()
