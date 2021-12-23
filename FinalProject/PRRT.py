@@ -21,7 +21,7 @@ import resource
 
 # sys.setrecursionlimit(10000)
 
-show_animation = False
+show_animation = True
 
 class RRT:
     class Node:
@@ -315,7 +315,7 @@ class RRT:
                 self.node_list.append(item)
 
             if animation and i % 1 == 0:
-                self.draw_graph(rnd_node)
+                self.draw_graph(rnd_node, pause= 3)
             
             shift = self.proc.rank_ + 1
             shift = 1
@@ -329,7 +329,7 @@ class RRT:
                     return self.generate_final_course(len(self.node_list) - 1)
 
             if animation and i % 5:
-                self.draw_graph(rnd_node)
+                self.draw_graph(rnd_node, pause=3)
 
         return None  # cannot find path
 
